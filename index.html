@@ -465,7 +465,7 @@ body {
     <h3>HOW TO PLAY</h3>
     <ul>
       <li>스테이지마다 <strong style="color:#eee">랜덤 조건</strong>이 주어집니다</li>
-      <li>조건이 충족되는 순간 <strong style="color:var(--accent2)">스페이스바</strong>를 누르세요</li>
+      <li>조건이 충족되는 순간 <strong style="color:var(--accent2)">스페이스바 (또는 화면을)</strong>를 누르세요</li>
       <li>조건 미충족 시 틀린 답으로 처리됩니다</li>
       <li>10초가 지나면 자동으로 실패 처리됩니다</li>
       <li>최대 스테이지까지 도전해보세요!</li>
@@ -1444,6 +1444,43 @@ setInterval(() => {
     });
   }
 }, 1000);
+
+
+function handleAction(e) {
+  if (!STATE.running || STATE.stopped) return;
+
+  // 이벤트 기본 동작 방지 (스크롤 등)
+  if (e) e.preventDefault();
+
+  // 1. 단순 스페이스바 카운트 미션일 때
+  if (STATE.event?.type === 'spacebar_count') {
+    STATE.spacebarCount++;
+    showSpacebarFeedback();
+    
+    // 목표치 초과 시 즉시 실패 처리
+    if (STATE.spacebarCount > STATE.event.detail.target_count) {
+      STATE.running = false;
+      STATE.stopped = true;
+      clearInterval(STATE.timer);
+      document.getElementById("btnStop").disabled = true;
+      showResult(false, "실패!", "너무 많이 눌렀습니다!");
+      STATE.totalWrong++;
+      saveRecord();
+    }
+  } 
+  // 2. 그 외 일반적인 STOP 조건일 때
+  else if (STATE.event?.type !== 'dont_click') {
+    // STOP 버튼 클릭 시뮬레이션
+    onStop(); 
+  }
+}
+
+document.addEventListener("pointerdown", (e) => {
+  // 버튼이나 링크를 클릭한 게 아닐 때만 실행
+  if (e.target.tagName !== 'BUTTON' && e.target.tagName !== 'A') {
+    handleAction(e);
+  }
+});
 
 document.addEventListener("keydown", (e) => {
   if (e.code === "Space" || e.key === " ") {
