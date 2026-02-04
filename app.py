@@ -1,7 +1,7 @@
 from flask import Flask, jsonify, request, make_response
 import sqlite3, uuid, random
 from datetime import datetime
-
+import os
 app = Flask(__name__)
 
 # ─── CORS ─────────────────────────────────────────────────────
@@ -17,12 +17,17 @@ def options_handler(path):
     return "", 204
 
 # ─── DB ──────────────────────────────────────────────────────────
-DB = "game.db"
+DB_PATH = "/data"
+DB = os.path.join(DB_PATH, "game.db")
 
 def get_db():
+    # /data 폴더가 없으면 생성 (권한 오류 방지)
+    if not os.path.exists(DB_PATH):
+        os.makedirs(DB_PATH)
     conn = sqlite3.connect(DB)
     conn.row_factory = sqlite3.Row
     return conn
+
 
 def init_db():
     conn = get_db()
@@ -836,4 +841,5 @@ def my_best():
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
