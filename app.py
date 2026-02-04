@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request, make_response
+from flask import Flask, jsonify, request, make_response, send_from_directory
 import sqlite3, uuid, random
 from datetime import datetime
 import os
@@ -418,6 +418,12 @@ def create_non_time_event(stage):
 
 
 # ─── ROUTES ──────────────────────────────────────────────────────
+
+@app.route('/')
+def serve_index():
+    # 현재 실행 경로('.')에서 index.html 파일을 찾아 전송합니다.
+    return send_from_directory('.', 'index.html')
+
 
 @app.route("/api/register", methods=["POST"])
 def register():
