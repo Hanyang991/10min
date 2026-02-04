@@ -1100,7 +1100,6 @@ function goHomeFromLb() {
 
 function goHome() {
   hideResult();
-  saveRecord();
   STATE.stage = 1; STATE.score = 0; STATE.totalCorrect = 0; STATE.totalWrong = 0;
   clearInterval(STATE.timer);
   STATE.running = false;
