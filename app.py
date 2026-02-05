@@ -123,12 +123,20 @@ def create_time_based_event(possible_times, stage):
         digit = random.choice(unique_digits)
         conditions.append(("digit_in", digit))
     
-    # 5. 숫자 미포함
+    # 5. 숫자 미포함 - 10초 동안 계속 없으면 불가능 조건
     all_digits = set(range(10))
     absent = list(all_digits - set(digits))
     if absent:
         digit = random.choice(absent)
-        conditions.append(("digit_not_in", digit))
+        # 10초 안에 한 번도 안 나타나는지 체크
+        never_appears = all(digit not in [int(d) for d in f"{th:02d}{tm:02d}{ts:02d}"] 
+                           for th, tm, ts in possible_times)
+        
+        if never_appears:
+            # 불가능 조건 - 누르지 않아야 통과
+            conditions.append(("no_click_impossible", digit))
+        else:
+            conditions.append(("digit_not_in", digit))
     
     # 6. 숫자 합
     total = sum(digits)
@@ -206,6 +214,13 @@ def create_time_based_event(possible_times, stage):
             "type": "no_digit",
             "description": f"시간 표시에 숫자 **{cond[1]}**이 없을 때 멈추세요!",
             "detail": {"excluded_digit": cond[1]}
+        }
+    elif cond[0] == "no_click_impossible":
+        # 불가능 조건 - 10초 동안 한 번도 안 나타남
+        return {
+            "type": "no_click",
+            "description": f"⚠️ 10초 동안 숫자 **{cond[1]}**이 나타나지 않습니다. **멈추지 마세요!**",
+            "detail": {"impossible_digit": cond[1]}
         }
     elif cond[0] == "sum":
         return {
@@ -642,6 +657,11 @@ def verify():
     elif etype == "no_digit":
         correct = (detail["excluded_digit"] not in digits)
     
+    elif etype == "no_click":
+        # 불가능 조건 - 누르지 않았어야 함
+        clicked = data.get("clicked", True)  # onStop 호출됨 = True
+        correct = not clicked  # 안 눌렀으면 정답
+    
     elif etype == "sum_target":
         correct = (sum(digits) == detail["target"])
     
@@ -757,6 +777,8 @@ def generate_answer_info(etype, detail):
         return f"숫자 {detail['target_digit']}이 포함될 때"
     elif etype == "no_digit":
         return f"숫자 {detail['excluded_digit']}이 없을 때"
+    elif etype == "no_click":
+        return f"숫자 {detail.get('impossible_digit', '?')}이 나타나지 않으므로 누르지 않기"
     elif etype == "sum_target":
         return f"숫자 합이 {detail['target']}일 때"
     elif etype == "sum_even":

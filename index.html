@@ -521,9 +521,9 @@ body {
     </div>
 
   <div class="btn-row">
-    <button class="btn-stop" id="btnStop" onclick="onStop(event)">
+    <button class="btn-stop" id="btnStop" onclick="handleAction(event, true); onStop(event);">
       STOP
-      <span style="display: block; font-size: 0.65rem; opacity: 0.7; margin-top: 2px; font-weight: 400; letter-spacing: 1px;">SPACE</span>
+      <span style="display: block; font-size: 0.65rem; opacity: 0.7; margin-top: 2px; font-weight: 400; letter-spacing: 1px;">SPACE / TOUCH</span>
     </button>
     <button class="btn-next" id="btnNext" onclick="nextStage()">다음 스테이지 →</button>
   </div>
@@ -743,17 +743,25 @@ function timeUp() {
   STATE.stopped = true;
   document.getElementById("btnStop").disabled = true;
   
+  // spacebar_count
   if (STATE.event && STATE.event.type === "spacebar_count") {
     const target = STATE.event.detail.target_count;
     if (STATE.spacebarCount === target) {
       STATE.totalCorrect++;
-      showResult(true, "정답!", `정확히 ${target}번 눌렀습니다! 다음 단계로 가세요.`);
+      showResult(true, "정답!", `정확히 ${target}번 눌렀습니다!`);
     } else {
       STATE.totalWrong++;
       showResult(false, "틀렸습니다!", `목표: ${target}번 / 실제: ${STATE.spacebarCount}번`);
       saveRecord();
     }
-  } else {
+  } 
+  // no_click - 누르지 않았으면 정답
+  else if (STATE.event && STATE.event.type === "no_click") {
+    STATE.totalCorrect++;
+    showResult(true, "정답!", `불가능한 조건이므로 누르지 않았습니다!`);
+  }
+  // 일반 조건
+  else {
     const answerText = getAnswerText(STATE.event);
     showResult(false, "시간이 지났습니다!", `조건이 충족되지 않았습니다.<br/><br/>💡 <strong>정답:</strong> ${answerText}`);
     STATE.totalWrong++;
@@ -1429,6 +1437,7 @@ window.getAnswerText = function(event) {
     'long_press': `${detail.target_second}초에 1초 꾹`,
     'dont_click': detail.will_appear_red ? "빨강 나오면 X" : "빨강 없으면 O",
     'rhythm_tap': "깜빡임 3번",
+    'no_click': `숫자 ${detail.impossible_digit || '?'} 나타나지 않으므로 누르지 않기`,
   };
   
   return extras[etype] || base;
@@ -1446,32 +1455,47 @@ setInterval(() => {
 }, 1000);
 
 
-function handleAction(e) {
+function handleAction(e, isStopButton = false) {
   if (!STATE.running || STATE.stopped) return;
 
   // 이벤트 기본 동작 방지 (스크롤 등)
   if (e) e.preventDefault();
 
-  // 1. 단순 스페이스바 카운트 미션일 때
+  // spacebarCount는 모든 입력 카운트 (스페이스바, 터치, STOP버튼)
+  STATE.spacebarCount++;
+
+  // 1. spacebar_count 조건
   if (STATE.event?.type === 'spacebar_count') {
-    STATE.spacebarCount++;
     showSpacebarFeedback();
     
-    // 목표치 초과 시 즉시 실패 처리
+    // 목표치 초과 시 즉시 실패
     if (STATE.spacebarCount > STATE.event.detail.target_count) {
       STATE.running = false;
       STATE.stopped = true;
       clearInterval(STATE.timer);
       document.getElementById("btnStop").disabled = true;
-      showResult(false, "실패!", "너무 많이 눌렀습니다!");
+      const target = STATE.event.detail.target_count;
+      showResult(false, "실패!", `목표보다 많이 눌렀습니다!<br/>목표: ${target}번 / 실제: ${STATE.spacebarCount}번`);
       STATE.totalWrong++;
       saveRecord();
     }
   } 
-  // 2. 그 외 일반적인 STOP 조건일 때
-  else if (STATE.event?.type !== 'dont_click') {
-    // STOP 버튼 클릭 시뮬레이션
-    onStop(); 
+  // 2. no_click 조건 - 누르면 안 됨
+  else if (STATE.event?.type === 'no_click') {
+    // 누르면 즉시 실패
+    STATE.running = false;
+    STATE.stopped = true;
+    clearInterval(STATE.timer);
+    document.getElementById("btnStop").disabled = true;
+    showResult(false, "실패!", `불가능한 조건입니다. 누르지 말았어야 합니다!`);
+    STATE.totalWrong++;
+    saveRecord();
+  }
+  // 3. 일반 STOP 조건
+  else {
+    if (!isStopButton) {
+      onStop(); 
+    }
   }
 }
 
