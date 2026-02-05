@@ -16,6 +16,21 @@ def after_request(resp):
 def options_handler(path):
     return "", 204
 
+# ─── 정적 파일 서빙 ───────────────────────────────────────
+@app.route("/")
+def index():
+    return send_from_directory('.', 'index.html')
+
+@app.route("/<path:filename>")
+def static_files(filename):
+    # API 경로가 아닌 경우에만 정적 파일 서빙
+    if not filename.startswith('api/'):
+        try:
+            return send_from_directory('.', filename)
+        except:
+            return send_from_directory('.', 'index.html')
+    return "", 404
+
 # ─── DB ──────────────────────────────────────────────────────────
 DB_PATH = "/data"
 DB = os.path.join(DB_PATH, "game.db")
