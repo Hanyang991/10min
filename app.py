@@ -2,34 +2,19 @@ from flask import Flask, jsonify, request, make_response, send_from_directory
 import sqlite3, uuid, random
 from datetime import datetime
 import os
-app = Flask(__name__, static_folder='.')
+app = Flask(__name__)
 
 # ─── CORS ─────────────────────────────────────────────────────
 @app.after_request
 def after_request(resp):
     resp.headers["Access-Control-Allow-Origin"] = "*"
-    resp.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+    resp.headerzs["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
     resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
     return resp
 
 @app.route("/api/<path:path>", methods=["OPTIONS"])
 def options_handler(path):
     return "", 204
-
-# ─── 정적 파일 서빙 ───────────────────────────────────────
-@app.route("/")
-def serve_index():
-    return send_from_directory('.', 'index.html')
-
-@app.route("/<path:filename>")
-def serve_static(filename):
-    # API 경로가 아닌 경우에만 정적 파일 서빙
-    if not filename.startswith('api/'):
-        try:
-            return send_from_directory('.', filename)
-        except:
-            return send_from_directory('.', 'index.html')
-    return "", 404
 
 # ─── DB ──────────────────────────────────────────────────────────
 DB_PATH = "/data"
@@ -433,6 +418,12 @@ def create_non_time_event(stage):
 
 
 # ─── ROUTES ──────────────────────────────────────────────────────
+
+@app.route('/')
+def serve_index():
+    # 현재 실행 경로('.')에서 index.html 파일을 찾아 전송합니다.
+    return send_from_directory('.', 'index.html')
+
 
 @app.route("/api/register", methods=["POST"])
 def register():
