@@ -18,11 +18,11 @@ def options_handler(path):
 
 # ─── 정적 파일 서빙 ───────────────────────────────────────
 @app.route("/")
-def index():
+def serve_index():
     return send_from_directory('.', 'index.html')
 
 @app.route("/<path:filename>")
-def static_files(filename):
+def serve_static(filename):
     # API 경로가 아닌 경우에만 정적 파일 서빙
     if not filename.startswith('api/'):
         try:
