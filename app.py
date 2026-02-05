@@ -434,15 +434,6 @@ def create_non_time_event(stage):
 
 # ─── ROUTES ──────────────────────────────────────────────────────
 
-@app.route('/')
-def serve_index():
-    # 현재 실행 경로('.')에서 index.html 파일을 찾아 전송합니다.
-    return send_from_directory('.', 'index.html')
-
-@app.route('/<path:path>')
-def static_files(path):
-    return send_from_directory('.', path)
-
 @app.route("/api/register", methods=["POST"])
 def register():
     data = request.get_json()
