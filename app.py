@@ -57,228 +57,221 @@ CLOCK_TYPES = ["digital", "analog", "binary", "flip", "neon"]
 
 # ─── 10초 안의 시각 기반 조건 생성 ──────────────────────────────────
 
-    def get_possible_times():
-        """현재 시각 기준 1~10초 후의 모든 시각 반환"""
-        now = datetime.now()
-        h, m, s = now.hour, now.minute, now.second
-        
-        possible_times = []
-        for i in range(2, 11):  # 1~10초
-            future_s = s + i
-            future_m = m
-            future_h = h
-            if future_s >= 60:
-                future_s -= 60
-                future_m += 1
-                if future_m >= 60:
-                    future_m -= 60
-                    future_h = (future_h + 1) % 24
-            possible_times.append((future_h, future_m, future_s))
-        
-        return possible_times
+def get_possible_times():
+    """현재 시각 기준 2~10초 후의 모든 시각 반환"""
+    now = datetime.now()
+    h, m, s = now.hour, now.minute, now.second
+    
+    possible_times = []
+    for i in range(2, 11):  # 1~10초
+        future_s = s + i
+        future_m = m
+        future_h = h
+        if future_s >= 60:
+            future_s -= 60
+            future_m += 1
+            if future_m >= 60:
+                future_m -= 60
+                future_h = (future_h + 1) % 24
+        possible_times.append((future_h, future_m, future_s))
+    
+    return possible_times
 
 
-    def create_time_based_event(possible_times, stage):
-        """10초 안의 실제 시각을 기반으로 조건 생성"""
-        # 랜덤하게 시각 선택
-        target_time = random.choice(possible_times)
-        h, m, s = target_time
-        time_str = f"{h:02d}{m:02d}{s:02d}"
-        digits = [int(d) for d in time_str]
-        
-        # 가능한 조건 타입들
-        conditions = []
-        
-        # === 기본 조건 ===
-        
-        # 1. 특정 숫자 (초 또는 분)
-        conditions.append(("specific_second", s))
-        if random.random() < 0.2:
-            conditions.append(("specific_minute", m))
-        
-        # 2. 연속 숫자
-        max_run = 1
-        for i in range(len(digits)):
-            run = 1
-            for j in range(i+1, len(digits)):
-                if digits[i] == digits[j] and j == i + run:
-                    run += 1
-                else:
-                    break
-            max_run = max(max_run, run)
-        
-        if max_run >= 2:
-            for i in range(len(digits) - max_run + 1):
-                if all(digits[i] == digits[i+k] for k in range(max_run)):
-                    conditions.append(("matching", digits[i], max_run))
-                    break
-        
-        # 3. 회문
-        if time_str == time_str[::-1]:
-            conditions.append(("palindrome",))
-        
-        # 4. 숫자 포함
-        unique_digits = list(set(digits))
-        if unique_digits:
-            digit = random.choice(unique_digits)
-            conditions.append(("digit_in", digit))
-        
-        # 5. 숫자 미포함 - 10초 동안 계속 없으면 불가능 조건
-        all_digits = set(range(10))
-        absent = list(all_digits - set(digits))
-        if absent:
-            digit = random.choice(absent)
-            # 10초 안에 한 번도 안 나타나는지 체크
-            never_appears = all(digit not in [int(d) for d in f"{th:02d}{tm:02d}{ts:02d}"] 
-                            for th, tm, ts in possible_times)
-            
-            if never_appears:
-                # 불가능 조건 - 누르지 않아야 통과
-                conditions.append(("no_click_impossible", digit))
+def create_time_based_event(possible_times, stage):
+    """10초 안의 실제 시각을 기반으로 조건 생성 (함정 로직 추가됨)"""
+    
+    # [기존 코드 1] 랜덤하게 시각 선택 및 조건 생성 (그대로 유지)
+    target_time = random.choice(possible_times)
+    h, m, s = target_time
+    time_str = f"{h:02d}{m:02d}{s:02d}"
+    digits = [int(d) for d in time_str]
+    
+    conditions = []
+    
+    # 1. 특정 숫자
+    conditions.append(("specific_second", s))
+    if random.random() < 0.2:
+        conditions.append(("specific_minute", m))
+    
+    # 2. 연속 숫자
+    max_run = 1
+    for i in range(len(digits)):
+        run = 1
+        for j in range(i+1, len(digits)):
+            if digits[i] == digits[j] and j == i + run:
+                run += 1
             else:
-                conditions.append(("digit_not_in", digit))
+                break
+        max_run = max(max_run, run)
+    if max_run >= 2:
+        for i in range(len(digits) - max_run + 1):
+            if all(digits[i] == digits[i+k] for k in range(max_run)):
+                conditions.append(("matching", digits[i], max_run))
+                break
+    
+    # 3~12. 나머지 조건들 (회문, 포함, 미포함, 합, 배수, 소수 등... 기존 코드 그대로)
+    if time_str == time_str[::-1]: conditions.append(("palindrome",))
+    
+    unique_digits = list(set(digits))
+    if unique_digits:
+        digit = random.choice(unique_digits)
+        conditions.append(("digit_in", digit))
         
-        # 6. 숫자 합
-        total = sum(digits)
-        conditions.append(("sum", total))
-        
-        # 7. 초=00
-        if s == 0:
-            conditions.append(("second_zero",))
-        
-        # === 고급 조건 (스테이지 5+) ===
-        if stage >= 5:
-            # 8. 합이 짝수/홀수
-            if total % 2 == 0:
-                conditions.append(("sum_even",))
-            else:
-                conditions.append(("sum_odd",))
+    all_digits = set(range(10))
+    absent = list(all_digits - set(digits))
+    if absent:
+        digit = random.choice(absent)
+        # 미포함 로직은 원본의 'never_appears' 체크가 이미 강력한 함정 역할이므로 그대로 둠
+        never_appears = all(digit not in [int(d) for d in f"{th:02d}{tm:02d}{ts:02d}"] for th, tm, ts in possible_times)
+        if never_appears: conditions.append(("no_click_impossible", digit))
+        else: conditions.append(("digit_not_in", digit))
             
-            # 9. 특정 배수 (7의 배수)
-            if s % 7 == 0 and s > 0:
-                conditions.append(("multiple_7",))
-            
-            # 10. 소수
-            if is_prime(s):
-                conditions.append(("prime",))
-            
-            # 11. 샌드위치 (분 == 초)
-            if m == s:
-                conditions.append(("sandwich",))
-            
-            # 12. 계단 (연속 증가/감소)
-            if is_sequence_asc(digits):
-                conditions.append(("ascending",))
-            elif is_sequence_desc(digits):
-                conditions.append(("descending",))
-        
-        # 랜덤하게 하나 선택
-        if not conditions:
-            return None
-        
-        cond = random.choice(conditions)
-        
-        # 조건별 이벤트 생성
-        if cond[0] == "specific_second":
-            return {
-                "type": "specific_number",
-                "description": f"시계에서 **{cond[1]}초**이 표시될 때 멈추세요!",
-                "detail": {"target": cond[1], "unit": "second"}
-            }
-        elif cond[0] == "specific_minute":
-            return {
-                "type": "specific_number",
-                "description": f"시계에서 **{cond[1]}분**이 표시될 때 멈추세요!",
-                "detail": {"target": cond[1], "unit": "minute"}
-            }
-        elif cond[0] == "matching":
-            return {
-                "type": "matching_digits",
-                "description": f"숫자 **{cond[1]}**이 **{cond[2]}개** 연속으로 나타날 때 멈추세요!",
-                "detail": {"digit": cond[1], "count": cond[2]}
-            }
-        elif cond[0] == "palindrome":
-            return {
-                "type": "palindrome",
-                "description": "시간 표시가 **회문(앞뒤로 읽어도 같은 숫자)**이 될 때 멈추세요!",
-                "detail": {}
-            }
-        elif cond[0] == "digit_in":
-            return {
-                "type": "digit_appears",
-                "description": f"시간 표시에 숫자 **{cond[1]}**이 포함될 때 멈추세요!",
-                "detail": {"target_digit": cond[1]}
-            }
-        elif cond[0] == "digit_not_in":
-            return {
-                "type": "no_digit",
-                "description": f"시간 표시에 숫자 **{cond[1]}**이 없을 때 멈추세요!",
-                "detail": {"excluded_digit": cond[1]}
-            }
-        elif cond[0] == "no_click_impossible":
-            # 불가능 조건 - 10초 동안 한 번도 안 나타남
-            return {
-                "type": "no_click",
-                "description": f"⚠️ 10초 동안 숫자 **{cond[1]}**이 나타나지 않습니다. **멈추지 마세요!**",
-                "detail": {"impossible_digit": cond[1]}
-            }
-        elif cond[0] == "sum":
-            return {
-                "type": "sum_target",
-                "description": f"시간 숫자들의 **합이 {cond[1]}**이 될 때 멈추세요!",
-                "detail": {"target": cond[1]}
-            }
-        elif cond[0] == "second_zero":
-            return {
-                "type": "second_zero",
-                "description": "시계의 **초(秒)가 00**이 될 때 멈추세요!",
-                "detail": {}
-            }
-        elif cond[0] == "sum_even":
-            return {
-                "type": "sum_even",
-                "description": "시간 숫자들의 **합이 짝수**일 때 멈추세요!",
-                "detail": {}
-            }
-        elif cond[0] == "sum_odd":
-            return {
-                "type": "sum_odd",
-                "description": "시간 숫자들의 **합이 홀수**일 때 멈추세요!",
-                "detail": {}
-            }
-        elif cond[0] == "multiple_7":
-            return {
-                "type": "multiple_7",
-                "description": "**초가 7의 배수**일 때 멈추세요!",
-                "detail": {}
-            }
-        elif cond[0] == "prime":
-            return {
-                "type": "prime_second",
-                "description": "**초가 소수**(2,3,5,7,11,13...)일 때 멈추세요!",
-                "detail": {}
-            }
-        elif cond[0] == "sandwich":
-            return {
-                "type": "sandwich",
-                "description": "**분과 초가 같을 때** 멈추세요!",
-                "detail": {}
-            }
-        elif cond[0] == "ascending":
-            return {
-                "type": "ascending",
-                "description": "숫자가 **연속으로 증가**할 때 멈추세요!",
-                "detail": {}
-            }
-        elif cond[0] == "descending":
-            return {
-                "type": "descending",
-                "description": "숫자가 **연속으로 감소**할 때 멈추세요!",
-                "detail": {}
-            }
-        
-        return None
+    total = sum(digits)
+    conditions.append(("sum", total))
+    
+    if s == 0: conditions.append(("second_zero",))
+    
+    if stage >= 5:
+        if total % 2 == 0: conditions.append(("sum_even",))
+        else: conditions.append(("sum_odd",))
+        if s % 7 == 0 and s > 0: conditions.append(("multiple_7",))
+        if is_prime(s): conditions.append(("prime",))
+        if m == s: conditions.append(("sandwich",))
+        if is_sequence_asc(digits): conditions.append(("ascending",))
+        elif is_sequence_desc(digits): conditions.append(("descending",))
 
+    if not conditions: return None
+    
+    cond = random.choice(conditions)
+
+    # =========================================================================
+    # [추가된 로직] 여기서 결정을 뒤집습니다 (함정 생성)
+    # =========================================================================
+    is_trap = False
+    
+    # no_click_impossible은 이미 함정이므로 건드리지 않음
+    if cond[0] != "no_click_impossible":
+        # 30% 확률로 정답 조건을 오답으로 변조
+        if random.random() < 0.3:
+            
+            # 1) 초(Second) 변조
+            if cond[0] == "specific_second":
+                valid_secs = set(t[2] for t in possible_times)
+                invalid_secs = list(set(range(60)) - valid_secs)
+                if invalid_secs:
+                    cond = ("specific_second", random.choice(invalid_secs))
+                    is_trap = True
+                    
+            # 2) 분(Minute) 변조
+            elif cond[0] == "specific_minute":
+                valid_mins = set(t[1] for t in possible_times)
+                invalid_mins = list(set(range(60)) - valid_mins)
+                if invalid_mins:
+                    cond = ("specific_minute", random.choice(invalid_mins))
+                    is_trap = True
+            
+            # 3) 합(Sum) 변조
+            elif cond[0] == "sum":
+                valid_sums = set()
+                for ph, pm, ps in possible_times:
+                    valid_sums.add(sum([int(d) for d in f"{ph:02d}{pm:02d}{ps:02d}"]))
+                
+                # 가능한 합 범위 (0~54) 중 안 나오는 것 선택
+                invalid_sums = list(set(range(55)) - valid_sums)
+                if invalid_sums:
+                    cond = ("sum", random.choice(invalid_sums))
+                    is_trap = True
+                    
+            # 4) 숫자 포함(Digit In) 변조
+            elif cond[0] == "digit_in":
+                valid_digits = set()
+                for ph, pm, ps in possible_times:
+                    valid_digits.update([int(d) for d in f"{ph:02d}{pm:02d}{ps:02d}"])
+                
+                invalid_digits = list(set(range(10)) - valid_digits)
+                if invalid_digits:
+                    cond = ("digit_in", random.choice(invalid_digits))
+                    is_trap = True
+
+    # =========================================================================
+    # [수정된 반환] is_trap 정보를 detail에 추가하여 반환
+    # =========================================================================
+
+    if cond[0] == "specific_second":
+        return {
+            "type": "specific_number",
+            "description": f"시계에서 **{cond[1]}초**가 표시될 때 멈추세요!",
+            "detail": {"target": cond[1], "unit": "second", "is_trap": is_trap}
+        }
+    elif cond[0] == "specific_minute":
+        return {
+            "type": "specific_number",
+            "description": f"시계에서 **{cond[1]}분**이 표시될 때 멈추세요!",
+            "detail": {"target": cond[1], "unit": "minute", "is_trap": is_trap}
+        }
+    elif cond[0] == "matching":
+        # 연속 숫자는 변조가 복잡하므로 is_trap=False 고정 (혹은 위에서 처리 안함)
+        return {
+            "type": "matching_digits",
+            "description": f"숫자 **{cond[1]}**이 **{cond[2]}개** 연속으로 나타날 때 멈추세요!",
+            "detail": {"digit": cond[1], "count": cond[2], "is_trap": False}
+        }
+    elif cond[0] == "palindrome":
+        return {
+            "type": "palindrome",
+            "description": "시간 표시가 **회문(앞뒤로 읽어도 같은 숫자)**이 될 때 멈추세요!",
+            "detail": {"is_trap": False} # 회문은 변조 어려움
+        }
+    elif cond[0] == "digit_in":
+        return {
+            "type": "digit_appears",
+            "description": f"시간 표시에 숫자 **{cond[1]}**이 포함될 때 멈추세요!",
+            "detail": {"target_digit": cond[1], "is_trap": is_trap}
+        }
+    elif cond[0] == "digit_not_in":
+        return {
+            "type": "no_digit",
+            "description": f"시간 표시에 숫자 **{cond[1]}**이 없을 때 멈추세요!",
+            "detail": {"excluded_digit": cond[1], "is_trap": False}
+        }
+    elif cond[0] == "no_click_impossible":
+        return {
+            "type": "no_click",
+            "description": f"⚠️ 10초 동안 숫자 **{cond[1]}**이 나타나지 않습니다. **멈추지 마세요!**",
+            "detail": {"impossible_digit": cond[1], "is_trap": True} # 이건 원래 함정
+        }
+    elif cond[0] == "sum":
+        return {
+            "type": "sum_target",
+            "description": f"시간 숫자들의 **합이 {cond[1]}**이 될 때 멈추세요!",
+            "detail": {"target": cond[1], "is_trap": is_trap}
+        }
+    elif cond[0] == "second_zero":
+        return {
+            "type": "second_zero",
+            "description": "시계의 **초(秒)가 00**이 될 때 멈추세요!",
+            "detail": {"is_trap": False}
+        }
+    
+    # 고급 조건들은 변조 로직을 추가하지 않았으므로 is_trap=False로 반환
+    # (필요하다면 위쪽 is_trap 로직에 추가 가능)
+    elif cond[0] == "sum_even":
+        return {"type": "sum_even", "description": "합이 짝수일 때 멈추세요!", "detail": {"is_trap": False}}
+    elif cond[0] == "sum_odd":
+        return {"type": "sum_odd", "description": "합이 홀수일 때 멈추세요!", "detail": {"is_trap": False}}
+    elif cond[0] == "multiple_7":
+        return {"type": "multiple_7", "description": "초가 7의 배수일 때 멈추세요!", "detail": {"is_trap": False}}
+    elif cond[0] == "prime":
+        return {"type": "prime_second", "description": "초가 소수일 때 멈추세요!", "detail": {"is_trap": False}}
+    elif cond[0] == "sandwich":
+        return {"type": "sandwich", "description": "분과 초가 같을 때 멈추세요!", "detail": {"is_trap": False}}
+    elif cond[0] == "ascending":
+        return {"type": "ascending", "description": "숫자가 연속 증가할 때 멈추세요!", "detail": {"is_trap": False}}
+    elif cond[0] == "descending":
+        return {"type": "descending", "description": "숫자가 연속 감소할 때 멈추세요!", "detail": {"is_trap": False}}
+    
+    return None
 
 def is_prime(n):
     """소수 판별"""
