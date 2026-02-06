@@ -59,6 +59,7 @@ CLOCK_TYPES = ["digital", "analog", "binary", "flip", "neon"]
 
 def get_possible_times():
     """현재 시각 기준 2~10초 후의 모든 시각 반환"""
+    """ hi """
     now = datetime.now()
     h, m, s = now.hour, now.minute, now.second
     
