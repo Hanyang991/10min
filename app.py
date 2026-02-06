@@ -656,11 +656,18 @@ def verify():
             else:
                 run = 0
         if not correct:
-            # 예시 시각 생성
+            # 예시 시각 생성 - 명확하게 연속 표시
             if count == 2:
-                expected_time = f"{target_d}{target_d}:{m:02d}:{s:02d} (예시)"
+                # 초 자리에 연속 2개
+                ss = min(int(f"{target_d}{target_d}"), 59)
+                expected_time = f"{h:02d}:{m:02d}:{ss:02d} (예시)"
             elif count == 3:
-                expected_time = f"{target_d}{target_d}:{target_d}{m % 10}:{s:02d} (예시)"
+                # 분초 자리에 연속 3개
+                mm = min(int(f"{target_d}{target_d}"), 59)
+                ss = min(int(f"{target_d}{(s % 10)}"), 59)
+                expected_time = f"{h:02d}:{mm:02d}:{ss:02d} (예시)"
+            else:
+                expected_time = f"연속 {count}개 필요 (예시)"
     
     elif etype == "palindrome":
         s_str = f"{h:02d}{m:02d}{s:02d}"
@@ -674,26 +681,25 @@ def verify():
         if not correct:
             # 해당 숫자 포함 예시
             td = detail["target_digit"]
-            expected_time = f"{td}{h % 10}:{m:02d}:{s:02d} (예시)"
+            # 초 자리에 타겟 숫자 (유효 범위 보장)
+            ss_str = f"{td}{(s % 10):01d}"
+            ss = min(int(ss_str), 59)
+            expected_time = f"{h:02d}:{m:02d}:{ss:02d} (예시)"
     
     elif etype == "no_digit":
         correct = (detail["excluded_digit"] not in digits)
         if not correct:
             # 해당 숫자 없는 예시
             excluded = detail["excluded_digit"]
-            # 간단히 다른 숫자로만 구성
-            other = (excluded + 1) % 10
-            expected_time = f"{other}{other}:{other}{other}:{other}{other} (예시)"
-    
-    elif etype == "no_click":
-        s_str = f"{h:02d}{m:02d}{s:02d}"
-        correct = (s_str == s_str[::-1])
-    
-    elif etype == "digit_appears":
-        correct = (detail["target_digit"] in digits)
-    
-    elif etype == "no_digit":
-        correct = (detail["excluded_digit"] not in digits)
+            # 제외된 숫자가 아닌 다른 숫자들로만 구성
+            safe_digits = [d for d in range(10) if d != excluded]
+            if safe_digits:
+                # 간단한 예시: 같은 숫자 반복
+                sample = safe_digits[0]
+                hh = min(sample * 10 + sample, 23)
+                mm = min(sample * 10 + sample, 59)
+                ss = min(sample * 10 + sample, 59)
+                expected_time = f"{hh:02d}:{mm:02d}:{ss:02d} (예시)"
     
     elif etype == "no_click":
         # 불가능 조건 - 누르지 않았어야 함
