@@ -982,8 +982,20 @@ async function onStop(e) {
       showResult(true, "정답!", `스테이지 ${STATE.stage} 완료! 다음 단계로 가세요.`);
     } else {
       STATE.totalWrong++;
-      const answerText = data.answer ? `<br/><br/>💡 <strong>정답:</strong> ${data.answer}` : '';
-      showResult(false, "틀렸습니다!", `조건이 충족되지 않은 순간에 멈췄습니다.${answerText}<br/><br/>처음부터 다시 시작하세요.`);
+      let errorMsg = `조건이 충족되지 않은 순간에 멈췄습니다.`;
+      
+      // 정답 시각 표시
+      if (data.expected_time) {
+        errorMsg += `<br/><br/>⏰ <strong>정답 시각:</strong> ${data.expected_time}`;
+      }
+      
+      // 정답 조건 표시
+      if (data.answer) {
+        errorMsg += `<br/>💡 <strong>조건:</strong> ${data.answer}`;
+      }
+      
+      errorMsg += `<br/><br/>처음부터 다시 시작하세요.`;
+      showResult(false, "틀렸습니다!", errorMsg);
       saveRecord();
     }
   } catch(e) {
@@ -1407,8 +1419,16 @@ window.onStop = async function(event) {
       showResult(true, "정답!", `스테이지 ${STATE.stage} 완료!`);
     } else {
       STATE.totalWrong++;
-      const answerText = data.answer || '';
-      showResult(false, "틀림!", `💡 정답: ${answerText}`);
+      let errorMsg = "조건 불일치!";
+      
+      if (data.expected_time) {
+        errorMsg += `<br/>⏰ <strong>정답 시각:</strong> ${data.expected_time}`;
+      }
+      if (data.answer) {
+        errorMsg += `<br/>💡 <strong>조건:</strong> ${data.answer}`;
+      }
+      
+      showResult(false, "틀림!", errorMsg);
       saveRecord();
     }
   } catch(e) {

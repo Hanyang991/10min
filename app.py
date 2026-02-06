@@ -618,7 +618,7 @@ def verify():
     active_bg_color = data.get("active_bg_color")
     active_icons = data.get("active_icons", [])
     active_highlight = data.get("active_highlight")
-    active_clock_color = data.get("active_clock_color")  # 시계 색상
+    active_clock_color = data.get("active_clock_color")
     spacebar_count = data.get("spacebar_count", 0)
     
     etype = event.get("type")
@@ -627,12 +627,21 @@ def verify():
     
     correct = False
     digits = [int(d) for d in f"{h:02d}{m:02d}{s:02d}"]
+    expected_time = None  # 정답 시각
     
     if etype == "specific_number":
         unit = detail["unit"]
         target = detail["target"]
         val = {"hour": h, "minute": m, "second": s}[unit]
         correct = (val == target)
+        if not correct:
+            # 정답 시각 생성
+            if unit == "second":
+                expected_time = f"{h:02d}:{m:02d}:{target:02d}"
+            elif unit == "minute":
+                expected_time = f"{h:02d}:{target:02d}:{s:02d}"
+            elif unit == "hour":
+                expected_time = f"{target:02d}:{m:02d}:{s:02d}"
     
     elif etype == "matching_digits":
         target_d = detail["digit"]
@@ -646,8 +655,37 @@ def verify():
                     break
             else:
                 run = 0
+        if not correct:
+            # 예시 시각 생성
+            if count == 2:
+                expected_time = f"{target_d}{target_d}:{m:02d}:{s:02d} (예시)"
+            elif count == 3:
+                expected_time = f"{target_d}{target_d}:{target_d}{m % 10}:{s:02d} (예시)"
     
     elif etype == "palindrome":
+        s_str = f"{h:02d}{m:02d}{s:02d}"
+        correct = (s_str == s_str[::-1])
+        if not correct:
+            # 가장 가까운 회문 시각 예시
+            expected_time = "12:21:21 (예시)"
+    
+    elif etype == "digit_appears":
+        correct = (detail["target_digit"] in digits)
+        if not correct:
+            # 해당 숫자 포함 예시
+            td = detail["target_digit"]
+            expected_time = f"{td}{h % 10}:{m:02d}:{s:02d} (예시)"
+    
+    elif etype == "no_digit":
+        correct = (detail["excluded_digit"] not in digits)
+        if not correct:
+            # 해당 숫자 없는 예시
+            excluded = detail["excluded_digit"]
+            # 간단히 다른 숫자로만 구성
+            other = (excluded + 1) % 10
+            expected_time = f"{other}{other}:{other}{other}:{other}{other} (예시)"
+    
+    elif etype == "no_click":
         s_str = f"{h:02d}{m:02d}{s:02d}"
         correct = (s_str == s_str[::-1])
     
@@ -659,32 +697,57 @@ def verify():
     
     elif etype == "no_click":
         # 불가능 조건 - 누르지 않았어야 함
-        clicked = data.get("clicked", True)  # onStop 호출됨 = True
-        correct = not clicked  # 안 눌렀으면 정답
+        clicked = data.get("clicked", True)
+        correct = not clicked
     
     elif etype == "sum_target":
         correct = (sum(digits) == detail["target"])
+        if not correct:
+            expected_time = f"합={detail['target']} 예: 03:14:25 (3+1+4+2+5={detail['target']})"
     
     elif etype == "sum_even":
         correct = (sum(digits) % 2 == 0)
+        if not correct:
+            expected_time = "합=짝수 예: 12:34:56 (1+2+3+4+5+6=21 홀수) → 12:34:52 (짝수)"
     
     elif etype == "sum_odd":
         correct = (sum(digits) % 2 == 1)
+        if not correct:
+            expected_time = "합=홀수 예: 12:34:52 (짝수) → 12:34:56 (1+2+3+4+5+6=21 홀수)"
     
     elif etype == "multiple_7":
         correct = (s % 7 == 0 and s > 0)
+        if not correct:
+            next_7 = ((s // 7) + 1) * 7
+            if next_7 < 60:
+                expected_time = f"{h:02d}:{m:02d}:{next_7:02d}"
+            else:
+                expected_time = f"{h:02d}:{(m+1)%60:02d}:07"
     
     elif etype == "prime_second":
         correct = is_prime(s)
+        if not correct:
+            primes = [2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59]
+            next_prime = next((p for p in primes if p > s), primes[0])
+            if next_prime < 60:
+                expected_time = f"{h:02d}:{m:02d}:{next_prime:02d}"
+            else:
+                expected_time = f"{h:02d}:{(m+1)%60:02d}:02"
     
     elif etype == "sandwich":
         correct = (m == s)
+        if not correct:
+            expected_time = f"{h:02d}:{s:02d}:{s:02d}"
     
     elif etype == "ascending":
         correct = is_sequence_asc(digits)
+        if not correct:
+            expected_time = "예: 12:34:56 (연속 증가)"
     
     elif etype == "descending":
         correct = is_sequence_desc(digits)
+        if not correct:
+            expected_time = "예: 10:09:08 (연속 감소)"
     
     elif etype == "bg_color_change":
         correct = (active_bg_color == detail["target_color_hex"])
@@ -762,7 +825,11 @@ def verify():
     # 정답 정보 생성
     answer_info = generate_answer_info(etype, detail)
     
-    return jsonify({"correct": correct, "answer": answer_info})
+    return jsonify({
+        "correct": correct, 
+        "answer": answer_info,
+        "expected_time": expected_time  # 정답 시각
+    })
 
 
 def generate_answer_info(etype, detail):
